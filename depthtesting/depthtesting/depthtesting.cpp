@@ -54,8 +54,14 @@ int main()
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	
 
 	Shader shader("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/shaders/shader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/shaders/shader.fs");
+
+	Shader dsshader("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/dsshaders/dsshader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/dsshaders/dsshader.fs");
 
 	float vertices[] = {
 			-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -149,14 +155,30 @@ int main()
 		processInput(window);
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-		shader.use();
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = camera.getView();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
+		dsshader.use();
+		dsshader.setMat4("view", view);
+		dsshader.setMat4("projection", projection);
+
+		shader.use();
 		shader.setMat4("view", view);
 		shader.setMat4("projection", projection);
+
+		glStencilMask(0x00);
+
+		glBindVertexArray(pVAO);
+		glBindTexture(GL_TEXTURE_2D, texture2);
+		shader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+
+		glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		glStencilMask(0xFF);
 
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
@@ -169,13 +191,28 @@ int main()
 		shader.setMat4("model", model);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		glBindVertexArray(pVAO);
-		glBindTexture(GL_TEXTURE_2D, texture2);
-		shader.setMat4("model", glm::mat4(1.0f));
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0x00);
+		glDisable(GL_DEPTH_TEST);
+		dsshader.use();
+		float scale = 1.1f;
+
+		glBindVertexArray(VAO);
+		glBindTexture(GL_TEXTURE_2D, texture1);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+		model = glm::scale(model, glm::vec3(scale));
+		dsshader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(scale));
+		dsshader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
+		glStencilMask(0xFF);
+		glStencilFunc(GL_ALWAYS, 0, 0xFF);
+		glEnable(GL_DEPTH_TEST);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
