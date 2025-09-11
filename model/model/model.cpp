@@ -19,7 +19,7 @@ void processInput(GLFWwindow* window);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 12.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -64,7 +64,11 @@ int main()
 
     Shader ourShader("C:/Users/admin/OneDrive/Desktop/Projects/model/shaders/shader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/model/shaders/shader.fs");
 
-    Model ourModel("C:/Users/admin/OneDrive/Desktop/Projects/model/dino/dino.obj");
+    Shader sunShader("C:/Users/admin/OneDrive/Desktop/Projects/model/sshaders/sshader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/model/sshaders/sshader.fs");
+
+    Model ourModel("C:/Users/admin/OneDrive/Desktop/Projects/model/earth/earth.obj");
+
+    Model sunModel("C:/Users/admin/OneDrive/Desktop/Projects/model/sun/sun.obj");
 
     while (!glfwWindowShouldClose(window))
     {
@@ -78,17 +82,34 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ourShader.use();
+        ourShader.setVec3("liColor", 1.0f, 1.0f, 1.0f);
+        ourShader.setVec3("LightPos", 0.0f, 0.0f, 0.0f);
 
         glm::mat4 projection = glm::perspective(glm::radians(camera.Fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.getView();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
+        float radius = 10.0f;
+        glm::vec3 pos;
+        pos.x = radius * sin(glfwGetTime()/5) * cos(glm::radians(23.44f));
+        pos.y = radius * sin(glfwGetTime()/5) * sin(glm::radians(23.44f));
+        pos.z = radius * cos(glfwGetTime()/5);
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); 
-        model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));	
+        model = glm::translate(model, pos); 
+        model = glm::rotate(model, (float)glfwGetTime()*73.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));	
         ourShader.setMat4("model", model);
+        ourShader.setVec3("FragPos", pos);
         ourModel.Draw(ourShader);
+
+        sunShader.use();
+        sunShader.setMat4("projection", projection);
+        sunShader.setMat4("view", view);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f));
+        sunShader.setMat4("model", model);
+        sunModel.Draw(sunShader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
