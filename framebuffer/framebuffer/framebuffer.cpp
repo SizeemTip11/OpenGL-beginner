@@ -17,8 +17,7 @@ void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xPosIn, double yPosIn);
 void scroll_callback(GLFWwindow* window, double xOffSet, double yOffSet);
 void manageVert(vector<float>& vertices, unsigned int& VAO, unsigned int& VBO);
-glm::mat4 billboarding(glm::mat4 model, glm::mat4 view);
-unsigned int loadTexture(char const *path);
+unsigned int loadTexture(char const* path);
 const float SCR_WIDTH = 800.0f;
 const float SCR_HEIGHT = 600.0f;
 float deltaTime = 0.0f;
@@ -55,19 +54,19 @@ int main()
 		return -1;
 	}
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_LESS);
+	//glEnable(GL_STENCIL_TEST);
+	//glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	//glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	/*glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	glFrontFace(GL_CW);
-	
+	glFrontFace(GL_CW);*/
 
-	Shader shader("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/shaders/shader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/shaders/shader.fs");
 
-	Shader dsshader("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/dsshaders/dsshader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/dsshaders/dsshader.fs");
+	Shader shader("C:/Users/admin/OneDrive/Desktop/Projects/framebuffer/shaders/shader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/framebuffer/shaders/shader.fs");
+
+	Shader qshader("C:/Users/admin/OneDrive/Desktop/Projects/framebuffer/qshaders/qshader.vs", "C:/Users/admin/OneDrive/Desktop/Projects/framebuffer/qshaders/qshader.fs");
 
 	vector<float>vertices = {
 		// Back face
@@ -123,27 +122,66 @@ int main()
 		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
 		 5.0f, -0.5f, -5.0f,  2.0f, 2.0f
 	};
-	vector<float> newVertices = {
-		-0.5f, -0.5f, -0.0f,  0.0f, 0.0f, // Bottom-left
-		 0.5f,  0.5f, -0.0f,  1.0f, 1.0f, // top-right
-		 0.5f, -0.5f, -0.0f,  1.0f, 0.0f, // bottom-right         
-		 0.5f,  0.5f, -0.0f,  1.0f, 1.0f, // top-right
-		-0.5f, -0.5f, -0.0f,  0.0f, 0.0f, // bottom-left
-		-0.5f,  0.5f, -0.0f,  0.0f, 1.0f, // top-left
+
+	vector<float> quadVertices = {
+		// positions   // texCoords
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		-1.0f, -1.0f,  0.0f, 0.0f,
+		 1.0f, -1.0f,  1.0f, 0.0f,
+
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		 1.0f, -1.0f,  1.0f, 0.0f,
+		 1.0f,  1.0f,  1.0f, 1.0f
 	};
+
 	unsigned int VBO, VAO;
 	manageVert(vertices, VAO, VBO);
 
 	unsigned int pVAO, pVBO;
 	manageVert(planeVertices, pVAO, pVBO);
 
-	unsigned int nVBO, nVAO;
-	manageVert(newVertices, nVAO, nVBO);
+	unsigned int qVAO, qVBO;
+	glGenVertexArrays(1, &qVAO);
+	glGenBuffers(1, &qVBO);
+	glBindVertexArray(qVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, qVBO);
+	glBufferData(GL_ARRAY_BUFFER, quadVertices.size() * sizeof(float), quadVertices.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
 
-	unsigned int texture1 = loadTexture("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/marble.jpg");
-	unsigned int texture2 = loadTexture("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/metal.png");
-	unsigned int texture3 = loadTexture("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/beiu (2).png");
-	unsigned int texture4 = loadTexture("C:/Users/admin/OneDrive/Desktop/Projects/depthtesting/beiu (1).jpg");
+	unsigned int texture1 = loadTexture("C:/Users/admin/OneDrive/Desktop/Projects/framebuffer/container.jpg");
+	unsigned int texture2 = loadTexture("C:/Users/admin/OneDrive/Desktop/Projects/framebuffer/metal.png");
+
+	unsigned int fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+	unsigned int textureColorBuffer;
+	glGenTextures(1, &textureColorBuffer);
+	glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
+
+	unsigned int rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	shader.use();
 	shader.setInt("texture1", 0);
@@ -155,32 +193,24 @@ int main()
 		lastFrame = currTime;
 
 		processInput(window);
-
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
 
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = camera.getView();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-		dsshader.use();
-		dsshader.setMat4("view", view);
-		dsshader.setMat4("projection", projection);
-
 		shader.use();
 		shader.setMat4("view", view);
 		shader.setMat4("projection", projection);
-
-		glStencilMask(0x00);
 
 		glBindVertexArray(pVAO);
 		glBindTexture(GL_TEXTURE_2D, texture2);
 		shader.setMat4("model", model);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
-
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
-		glStencilMask(0xFF);
 
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
@@ -192,61 +222,29 @@ int main()
 		model = glm::translate(model, glm::vec3(2.0f, 0.001f, 0.0f));
 		shader.setMat4("model", model);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-		glStencilMask(0x00);
-		glDisable(GL_DEPTH_TEST);
-		dsshader.use();
-		float scale = 1.1f;
-
-		glBindVertexArray(VAO);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-1.0f, 0.001f, -1.0f));
-		model = glm::scale(model, glm::vec3(scale));
-		dsshader.setMat4("model", model);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(2.0f, 0.001f, 0.0f));
-		model = glm::scale(model, glm::vec3(scale));
-		dsshader.setMat4("model", model);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		glStencilMask(0xFF);
-		glStencilFunc(GL_ALWAYS, 0, 0xFF);
-		glEnable(GL_DEPTH_TEST);
-		shader.use();
-		float scale1 = 0.7f;
-		glBindVertexArray(nVAO);
-		glBindTexture(GL_TEXTURE_2D, texture3);
-		model = glm::mat4(1.0f);
-		glm::vec3 Opos = glm::vec3(-1.0f, 0.001f, -1.0f);
-		model = glm::translate(model, Opos);
-		model = billboarding(model, view);
-		model = glm::scale(model, glm::vec3(scale1));
-		shader.setMat4("model", model);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		shader.use();
-		glBindVertexArray(nVAO);
-		glBindTexture(GL_TEXTURE_2D, texture4);
-		model = glm::mat4(1.0f);
-		glm::vec3 Dpos = glm::vec3(2.0f, 0.001f, 0.0f);
-		model = glm::translate(model, Dpos);
-		model = billboarding(model, view);
-		model = glm::scale(model, glm::vec3(scale1));
-		shader.setMat4("model", model);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
 		glBindVertexArray(0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		qshader.use();
+		glBindVertexArray(qVAO);
+		glDisable(GL_DEPTH_TEST);
+		glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteVertexArrays(1, &pVAO);
+	glDeleteVertexArrays(1, &qVAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &pVBO);
+	glDeleteBuffers(1, &qVBO);
+	glDeleteRenderbuffers(1, &rbo);
+	glDeleteFramebuffers(1, &fbo);
 	glfwTerminate();
 	return 0;
 }
@@ -341,16 +339,4 @@ void manageVert(vector<float>& vertices, unsigned int& VAO, unsigned int& VBO) {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
-}
-glm::mat4 billboarding(glm::mat4 model, glm::mat4 view)
-{
-	glm::vec3 camRight = glm::vec3(view[0][0], view[1][0], view[2][0]);
-	glm::vec3 camUp = glm::vec3(view[0][1], view[1][1], view[2][1]);
-	glm::vec3 camForward = glm::vec3(view[0][2], view[1][2], view[2][2]);
-	glm::mat4 rotation(1.0f);
-	rotation[0] = glm::vec4(camRight, 0.0f);
-	rotation[1] = glm::vec4(camUp, 0.0f);
-	rotation[2] = glm::vec4(-camForward, 0.0f); // negate so it faces camera
-	model *= rotation;
-	return model;
 }
